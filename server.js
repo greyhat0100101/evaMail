@@ -21,13 +21,21 @@ console.log("EMAIL_PASS =", process.env.EMAIL_PASS ? "(cargada)" : "(VACÍA)");
 console.log("PORT =", process.env.PORT);
 console.log("=====================================");
 
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.error("❌ Falta configurar EMAIL_USER o EMAIL_PASS en las variables de entorno");
+    process.exit(1);
+}
+
 // -------------------------------------------------
 // 🔵 CONFIGURACIÓN DE NODEMAILER
 // -------------------------------------------------
 const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // SSL
+    port: 587,
+    secure: false, // STARTTLS
+    requireTLS: true,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
