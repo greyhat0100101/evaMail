@@ -14,23 +14,49 @@ app.use(express.static("public"));
 // -------------------------------------------------
 // 🧪 DEBUG: MOSTRAR VALORES DEL .env
 // -------------------------------------------------
+const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+const smtpPort = Number(process.env.SMTP_PORT || 465);
+const resolvedSmtpPort = Number.isNaN(smtpPort) ? 465 : smtpPort;
+const smtpSecure = process.env.SMTP_SECURE
+    ? process.env.SMTP_SECURE === "true"
+    : resolvedSmtpPort === 465;
+
+const smtpUser = process.env.EMAIL_USER;
+const smtpPass = process.env.EMAIL_PASS;
+const smtpFrom = process.env.EMAIL_FROM || smtpUser;
+
 console.log("=====================================");
 console.log("🔍 DEBUG ENV:");
-console.log("EMAIL_USER =", process.env.EMAIL_USER);
-console.log("EMAIL_PASS =", process.env.EMAIL_PASS ? "(cargada)" : "(VACÍA)");
-console.log("PORT =", process.env.PORT);
+console.log("SMTP_HOST =", smtpHost);
+console.log("SMTP_PORT =", resolvedSmtpPort);
+console.log("SMTP_SECURE =", smtpSecure);
+console.log("EMAIL_USER =", smtpUser ? "(definido)" : "(VACÍO)");
+console.log("EMAIL_PASS =", smtpPass ? "(cargada)" : "(VACÍA)");
+console.log("PORT =", process.env.PORT || 3000);
 console.log("=====================================");
 
 // -------------------------------------------------
 // 🔵 CONFIGURACIÓN DE NODEMAILER
 // -------------------------------------------------
+const missingEnv = [];
+
+if (!smtpUser) missingEnv.push("EMAIL_USER");
+if (!smtpPass) missingEnv.push("EMAIL_PASS");
+
+if (missingEnv.length) {
+    console.warn(
+        "⚠️  Variables de entorno faltantes para SMTP:",
+        missingEnv.join(", ")
+    );
+}
+
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // SSL
+    host: smtpHost,
+    port: resolvedSmtpPort,
+    secure: smtpSecure, // SSL si es true
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: smtpUser,
+        pass: smtpPass
     }
 });
 
@@ -79,8 +105,16 @@ app.post("/api/send-email", async (req, res) => {
     console.log("📤 Enviando correo a:", email);
 
     try {
+        if (missingEnv.length) {
+            return res.status(500).json({
+                message:
+                    "Faltan variables de entorno para enviar el correo.",
+                missingEnv
+            });
+        }
+
         const info = await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: smtpFrom,
             to: email,
             subject,
             text: message
