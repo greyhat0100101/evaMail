@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVA Mail</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  body {
+    margin: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: #0b0f19;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
+  }
+
+  canvas#bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+</style>
+
+</head>
+
+<body>
+
+<!-- CANVAS ANIMADO -->
+<canvas id="bg"></canvas>
+<script type="module" src="./tree.js"></script>
+
+<div class="min-h-screen flex items-center justify-center p-4">
+  <div class="glass rounded-xl p-5 max-w-md w-full">
+
+    <!-- EVA Mail Estilo Azul -->
+    <h1 class="text-2xl font-extrabold mb-4 text-center text-cyan-400">
+      EVA Mail
+    </h1>
+
+    <!-- DESTINATARIOS -->
+    <label class="text-sm font-semibold text-cyan-300">Destinatarios:</label>
+
+    <div id="selected-chips" class="flex flex-wrap gap-1 mt-2"></div>
+
+    <!-- Dropdown -->
+    <div class="relative mt-2">
+      <button id="dropdown-btn"
+        class="w-full bg-white/10 border border-white/20 text-gray-200 px-2 py-2 rounded-lg text-sm flex justify-between items-center">
+        Seleccionar
+        <span>▼</span>
+      </button>
+
+      <div id="dropdown"
+        class="hidden absolute mt-1 w-full bg-slate-900/95 border border-white/10 rounded-lg p-2 shadow-xl max-h-56 overflow-y-auto z-50">
+
+        <input id="search-box" type="text"
+          class="w-full p-1.5 mb-2 rounded bg-white/10 text-gray-200 border border-white/20 text-xs"
+          placeholder="Buscar...">
+
+        <div id="recipient-options"></div>
+
+      </div>
+    </div>
+
+    <!-- ASUNTO -->
+    <label class="text-sm font-semibold mt-4 text-cyan-300 block">Asunto:</label>
+    <input id="subject" class="w-full px-2 py-2 rounded-lg glass text-white placeholder-gray-400 mt-1 text-sm"
+      placeholder="Asunto">
+
+    <!-- MENSAJE -->
+    <label class="text-sm font-semibold mt-4 text-cyan-300 block">Mensaje:</label>
+    <textarea id="message" class="w-full px-2 py-2 rounded-lg glass text-white placeholder-gray-400 mt-1 h-28 text-sm"
+      placeholder="Escribe tu mensaje"></textarea>
+
+    <!-- BOTÓN ENVIAR -->
+    <button onclick="sendEmail()"
+      class="mt-4 w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-white font-semibold rounded-lg shadow-xl text-sm transition">
+      Enviar
+    </button>
+
+    <p id="status" class="text-gray-300 text-center mt-2 text-xs"></p>
+
+  </div>
+</div>
+
+<script>
+
+let employees = [];
+let selected = [];
+
+/* -------------------------------------------------------
+       CARGAR EMPLEADOS DESDE /api/employees
+-------------------------------------------------------- */
+async function loadEmployees() {
+  const res = await fetch("/api/employees");  // <= corregido
+  const raw = await res.json();
+
+  employees =
+    raw.entities ||
+    raw.data?.entities ||
+    raw.data ||
+    raw ||
+    [];
+
+  if (!Array.isArray(employees)) employees = Object.values(employees);
+
+  renderOptions();
+}
+
+/* -------------------------------------------------------
+       MOSTRAR OPCIONES EN EL DROPDOWN
+-------------------------------------------------------- */
+function renderOptions(filter = "") {
+  const box = document.getElementById("recipient-options");
+  box.innerHTML = "";
+
+  employees
+    .filter(e =>
+      (e.name || "").toLowerCase().includes(filter.toLowerCase())
+    )
+    .forEach(emp => {
+      const div = document.createElement("div");
+      div.className =
+        "flex items-center gap-2 p-1.5 rounded-md cursor-pointer hover:bg-cyan-600/30 transition";
+
+      div.onclick = () => toggleSelect(emp);
+
+      div.innerHTML = `
+        <img src="${emp.profile_image || 'https://i.imgur.com/4ZQZ4ZQ.png'}"
+             class="w-7 h-7 rounded-full object-cover">
+        <div>
+          <p class="text-gray-200 text-sm">${emp.name}</p>
+          <p class="text-gray-400 text-[10px]">${emp.email}</p>
+        </div>
+      `;
+
+      box.appendChild(div);
+    });
+}
+
+/* -------------------------------------------------------
+       AÑADIR O QUITAR UN EMPLEADO
+-------------------------------------------------------- */
+function toggleSelect(emp) {
+  if (selected.some(s => s.email === emp.email)) {
+    selected = selected.filter(s => s.email !== emp.email);
+  } else {
+    selected.push(emp);
+  }
+  renderChips();
+}
+
+/* -------------------------------------------------------
+       CHIPS DE EMPLEADOS SELECCIONADOS
+-------------------------------------------------------- */
+function renderChips() {
+  const container = document.getElementById("selected-chips");
+  container.innerHTML = "";
+
+  selected.forEach(emp => {
+    const chip = document.createElement("div");
+    chip.className =
+      "flex items-center gap-1 bg-cyan-500 text-black px-2 py-1 rounded-full shadow cursor-pointer text-xs";
+
+    chip.onclick = () => toggleSelect(emp);
+
+    chip.innerHTML = `
+      <img src="${emp.profile_image || 'https://i.imgur.com/4ZQZ4ZQ.png'}"
+        class="w-4 h-4 rounded-full">
+      <span>${emp.name}</span>
+      <strong class="ml-1 text-sm">×</strong>
+    `;
+
+    container.appendChild(chip);
+  });
+}
+
+/* -------------------------------------------------------
+                         BUSCADOR
+-------------------------------------------------------- */
+document.getElementById("search-box").addEventListener("input", e => {
+  renderOptions(e.target.value);
+});
+
+/* -------------------------------------------------------
+                         DROPDOWN
+-------------------------------------------------------- */
+document.getElementById("dropdown-btn").onclick = () => {
+  document.getElementById("dropdown").classList.toggle("hidden");
+};
+
+/* -------------------------------------------------------
+                       AUTO-CARGAR
+-------------------------------------------------------- */
+loadEmployees();
+
+/* -------------------------------------------------------
+                     ENVIAR EMAIL
+-------------------------------------------------------- */
+async function sendEmail() {
+
+  const recipients = selected.map(s => s.email);
+  const subject = document.getElementById("subject").value.trim();
+  const message = document.getElementById("message").value.trim();
+
+  if (!recipients.length)
+    return alert("Selecciona al menos un destinatario.");
+  if (!subject)
+    return alert("El asunto no puede estar vacío.");
+  if (!message)
+    return alert("El mensaje no puede estar vacío.");
+
+  const res = await fetch("/api/send-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: recipients.join(","), subject, message })
+  });
+
+  const data = await res.json();
+  document.getElementById("status").textContent = data.message;
+}
+
+</script>
+
+</body>
+</html>
