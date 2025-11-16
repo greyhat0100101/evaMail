@@ -32,7 +32,7 @@ console.log("SMTP_PORT =", resolvedSmtpPort);
 console.log("SMTP_SECURE =", smtpSecure);
 console.log("EMAIL_USER =", smtpUser ? "(definido)" : "(VACÍO)");
 console.log("EMAIL_PASS =", smtpPass ? "(cargada)" : "(VACÍA)");
-console.log("PORT =", process.env.PORT || 3000);
+console.log("PORT =", process.env.PORT || 3005);
 console.log("=====================================");
 
 // -------------------------------------------------
@@ -136,7 +136,7 @@ app.post("/api/send-email", async (req, res) => {
 // -------------------------------------------------
 // 🚀 INICIAR SERVIDOR
 // -------------------------------------------------
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 
 app.listen(PORT, () =>
     console.log(`🚀 Server running on http://localhost:${PORT}`)
